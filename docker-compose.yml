@@ -1,0 +1,9 @@
+version: "3"
+services:
+  mr-notification:
+    image: sinna94/mr-notification
+    environment:
+      GITLAB_TOKEN: GITLAB_TOKEN
+      GITLAB_GROUP_ID: GITLAB_GROUP_ID
+      SLACK_TOKEN: SLACK_TOKEN
+      SLACK_CHANNEL_ID: SLACK_CHANNEL_ID

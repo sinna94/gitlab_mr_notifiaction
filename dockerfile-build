@@ -1,0 +1,7 @@
+FROM openjdk:17-alpine
+
+COPY ./ /app
+
+WORKDIR /app
+
+CMD ./gradlew clean build
