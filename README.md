@@ -2,11 +2,12 @@
 
 gitlab 의 그룹에 열린 상태인 MR 정보를 Slack 메시지로 전송하는 어플리케이션입니다.
 
-## 메시지 예
+## 메시지 포맷
 ``` 
-MR_TITLE : 생성일 2022-09-28 (mr_url) / Asignee, Reviewers...
-
-MR_TITLE : 생성일 2022-09-28 (mr_url) / Asignee, Reviewers...
+MR_TITLE
+mr_url
+담당자: assignee     리뷰어: reviewers
+생성일: 2023-05-08
 
 ...
 ```

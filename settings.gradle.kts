@@ -1,3 +1,3 @@
 
-rootProject.name = "gitlab_MR_notification"
+rootProject.name = "gitlab_mr_notification"
 

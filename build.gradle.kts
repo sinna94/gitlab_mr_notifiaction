@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "me.chung"
-version = "1.0-SNAPSHOT"
+version = "1.0.1"
 
 repositories {
     mavenCentral()
@@ -16,7 +16,7 @@ dependencies {
     implementation("org.slf4j:slf4j-simple:1.7.36")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.13.4")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.8")
-
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.15.0")
     testImplementation(kotlin("test"))
 }
 
@@ -25,12 +25,12 @@ tasks.test {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
 }
 
 tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "1.8"
+    kotlinOptions.jvmTarget = "17"
 }
 
 tasks.jar {

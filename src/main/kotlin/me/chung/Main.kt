@@ -4,25 +4,33 @@ import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.PropertyNamingStrategies
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.KotlinFeature
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.slack.api.Slack
+import com.slack.api.model.block.HeaderBlock
+import com.slack.api.model.block.LayoutBlock
+import com.slack.api.model.block.SectionBlock
+import com.slack.api.model.block.composition.MarkdownTextObject
+import com.slack.api.model.block.composition.PlainTextObject
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
-import java.text.SimpleDateFormat
-import java.util.*
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 private const val PRIVATE_TOKEN = "PRIVATE-TOKEN"
 private const val baseUrl = "https://gitlab.com/api/v4"
+private val now = LocalDate.now()
 
 fun main() {
-    val mergeRequestsNotification = getMergeRequestsNotification()
-    sendSlack(mergeRequestsNotification)
+    val mergeRequests = getMergeRequests()
+    val layoutBlocks = mergeRequests.flatMap { it.createBlock() }
+    sendSlack(layoutBlocks)
 }
 
-private fun getMergeRequestsNotification(): String {
+private fun getMergeRequests(): List<MergeRequest> {
     val gitlabToken = getEnvVariable("GITLAB_TOKEN")
     val gitlabGroupId = getEnvVariable("GITLAB_GROUP_ID")
 
@@ -34,10 +42,19 @@ private fun getMergeRequestsNotification(): String {
         HttpResponse.BodyHandlers.ofString()
     )
 
-    val objectMapper = ObjectMapper()
+    val objectMapper = buildObjectMapper()
+
+    return objectMapper.readValue(response.body(), object : TypeReference<List<MergeRequest>>() {})
+}
+
+private fun getEnvVariable(key: String): String? =
+    System.getenv(key) ?: throw IllegalStateException("please set $key in environment")
+
+private fun buildObjectMapper(): ObjectMapper {
+    return ObjectMapper()
         .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
         .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-        .registerModule(
+        .registerModules(
             KotlinModule.Builder()
                 .withReflectionCacheSize(512)
                 .configure(KotlinFeature.NullToEmptyCollection, false)
@@ -45,41 +62,80 @@ private fun getMergeRequestsNotification(): String {
                 .configure(KotlinFeature.NullIsSameAsDefault, false)
                 .configure(KotlinFeature.SingletonSupport, false)
                 .configure(KotlinFeature.StrictNullChecks, false)
-                .build()
+                .build(),
+            JavaTimeModule()
         )
-
-    val format = SimpleDateFormat("yyyy-MM-dd")
-    val mergeRequests = objectMapper.readValue(response.body(), object : TypeReference<List<MergeRequest>>() {})
-    val mergeRequestsNotification = mergeRequests.joinToString("\n\n") { mergeRequest ->
-        val (title, createdAt, webUrl, assignee, reviewers) = mergeRequest
-        val createdAtString = format.format(createdAt)
-        val reviewerNames = reviewers.joinToString { it.name }
-        "$title : 생성일 $createdAtString (${webUrl}) / ${assignee.name}, $reviewerNames"
-    }
-    return mergeRequestsNotification
 }
 
-private fun getEnvVariable(key: String): String? =
-    System.getenv(key) ?: throw IllegalStateException("please set $key in environment")
-
-data class MergeRequest(
-    var title: String,
-    var createdAt: Date,
-    var webUrl: String,
-    var assignee: Reviewer,
-    var reviewers: List<Reviewer>,
-)
-
-data class Reviewer(
-    var name: String,
-)
-
-private fun sendSlack(message: String) {
+private fun sendSlack(blocks: List<LayoutBlock>) {
     val slack = Slack.getInstance()
     val token = getEnvVariable("SLACK_TOKEN")
     val channelId = getEnvVariable("SLACK_CHANNEL_ID")
     slack.methods(token).chatPostMessage { req ->
         req.channel(channelId)
-            .text(message)
+            .text("코드 리뷰 알림")
+            .blocks(blocks)
     }
 }
+
+data class MergeRequest(
+    var title: String,
+    var createdAt: LocalDate,
+    var webUrl: String,
+    var assignee: Reviewer?,
+    var reviewers: List<Reviewer>,
+) {
+
+    companion object {
+        val format: DateTimeFormatter = DateTimeFormatter.ISO_DATE
+    }
+
+    fun createBlock(): List<LayoutBlock> {
+        return listOf(
+            HeaderBlock.builder()
+                .text(PlainTextObject.builder().text(title).build()).build(),
+            SectionBlock.builder()
+                .text(MarkdownTextObject.builder().text(webUrl).build())
+                .fields(
+                    listOfNotNull(
+                        assignee?.name?.let {
+                            MarkdownTextObject.builder().text("담당자: $it").build()
+                        },
+                        reviewers.let {
+                            if (reviewers.isNotEmpty()) {
+                                MarkdownTextObject.builder().text("리뷰어: ${joinReviewerNames()}").build()
+                            } else {
+                                null
+                            }
+                        },
+                        MarkdownTextObject.builder().text("생성일: ${createdAt.format(format)} ${getEmoji()}").build(),
+                    )
+                )
+                .build()
+        )
+    }
+
+    private fun joinReviewerNames(): String {
+        return reviewers.joinToString { it.name }
+    }
+
+    private fun getEmoji(): String {
+        if (now == createdAt) {
+            return ":new:"
+        }
+
+        // count between now and createdAt
+        val diff = (now.toEpochDay() - createdAt.toEpochDay())
+
+        return when{
+            diff > 3 -> ":fire:"
+            diff > 1 -> ":large_orange_diamond:\t"
+            else -> ""
+        }
+    }
+}
+
+
+data class Reviewer(
+    var name: String,
+)
