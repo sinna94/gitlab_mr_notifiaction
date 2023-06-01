@@ -13,6 +13,7 @@ import com.slack.api.model.block.LayoutBlock
 import com.slack.api.model.block.SectionBlock
 import com.slack.api.model.block.composition.MarkdownTextObject
 import com.slack.api.model.block.composition.PlainTextObject
+import org.slf4j.LoggerFactory
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -24,8 +25,14 @@ private const val PRIVATE_TOKEN = "PRIVATE-TOKEN"
 private const val baseUrl = "https://gitlab.com/api/v4"
 private val now = LocalDate.now()
 
+private val logger = LoggerFactory.getLogger("Main")
+
 fun main() {
     val mergeRequests = getMergeRequests()
+    if (mergeRequests.isEmpty()) {
+        logger.info("no merge requests")
+        return
+    }
     val layoutBlocks = mergeRequests.flatMap { it.createBlock() }
     sendSlack(layoutBlocks)
 }
@@ -47,7 +54,8 @@ private fun getMergeRequests(): List<MergeRequest> {
     return objectMapper.readValue(response.body(), object : TypeReference<List<MergeRequest>>() {})
 }
 
-private fun getEnvVariable(key: String): String? =
+private fun getEnvVariableOrNull(key: String): String? = System.getenv(key)
+private fun getEnvVariable(key: String): String =
     System.getenv(key) ?: throw IllegalStateException("please set $key in environment")
 
 private fun buildObjectMapper(): ObjectMapper {
@@ -68,6 +76,13 @@ private fun buildObjectMapper(): ObjectMapper {
 }
 
 private fun sendSlack(blocks: List<LayoutBlock>) {
+    getEnvVariableOrNull("DEBUG")?.let {
+        if (it == "true") {
+            logger.info(blocks.toString())
+            return
+        }
+    }
+
     val slack = Slack.getInstance()
     val token = getEnvVariable("SLACK_TOKEN")
     val channelId = getEnvVariable("SLACK_CHANNEL_ID")
@@ -127,7 +142,7 @@ data class MergeRequest(
         // count between now and createdAt
         val diff = (now.toEpochDay() - createdAt.toEpochDay())
 
-        return when{
+        return when {
             diff > 3 -> ":fire:"
             diff > 1 -> ":large_orange_diamond:\t"
             else -> ""
