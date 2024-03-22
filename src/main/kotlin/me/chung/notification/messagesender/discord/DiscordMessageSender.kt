@@ -3,6 +3,7 @@ package me.chung.notification.messagesender.discord
 import me.chung.gitlab.MergeRequest
 import me.chung.notification.messagesender.MessageBuilder
 import me.chung.notification.messagesender.MessageSender
+import me.chung.utils.ObjectMapperBuilder
 import me.chung.utils.SystemEnvironmentVariableProvider
 import org.slf4j.LoggerFactory
 import java.net.URI
@@ -15,8 +16,8 @@ class DiscordMessageSender(
 ) : MessageSender {
 
     companion object {
-        private val logger = LoggerFactory.getLogger(Companion::class.java)
-        private const val baseUrl = "https://discord.com/api"
+        private val logger = LoggerFactory.getLogger(DiscordMessageSender::class.java)
+        private const val BASE_URL = "https://discord.com/api"
     }
 
     override fun send(mergeRequestList: List<MergeRequest>) {
@@ -35,15 +36,19 @@ class DiscordMessageSender(
 
     private fun requestSendMessage(message: String, webhookId: String, webhookToken: String) {
         SystemEnvironmentVariableProvider.getEnvVariableOrNull("DEBUG")?.let {
+            println(it)
             if (it == "true") {
-                logger.info(message.toString())
+                logger.info(message)
                 return
             }
         }
 
         val httpClient = HttpClient.newHttpClient()
-        val httpRequest = HttpRequest.newBuilder(URI("$baseUrl/$webhookId/$webhookToken"))
-            .POST(HttpRequest.BodyPublishers.ofString("{\"content\":\"$message\"}"))
+        val objectMapper = ObjectMapperBuilder.build()
+        val jsonMessage = objectMapper.writeValueAsString(mapOf("content" to message))
+        val httpRequest = HttpRequest.newBuilder(URI("$BASE_URL/webhooks/$webhookId/$webhookToken"))
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(jsonMessage))
             .build()
 
         val httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString())

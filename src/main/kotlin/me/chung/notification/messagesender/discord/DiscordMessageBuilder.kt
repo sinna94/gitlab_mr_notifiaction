@@ -27,6 +27,7 @@ class DiscordMessageBuilder(
             wholeMessage += message
         }
 
+        messageList.add(wholeMessage)
         return DiscordMessageList(messageList)
     }
 
@@ -34,9 +35,9 @@ class DiscordMessageBuilder(
         val (title, createdAt, webUrl, assignee) = mergeRequest
 
         return """
-            ## $title
+            \n## $title
             $webUrl
-            담당자: ${assignee ?: ""}\\t 리뷰어: ${mergeRequest.getJoinedReviewerNames()}
+            담당자: ${assignee?.name ?: ""}\t 리뷰어: ${mergeRequest.getJoinedReviewerNames()}
             생성일: $createdAt ${emojiGenerator.generateByDateDiff(now, createdAt)}
         """.trimIndent()
     }

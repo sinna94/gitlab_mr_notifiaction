@@ -12,7 +12,7 @@ class GitLabMergeRequestFetcher {
 
     companion object {
         private const val PRIVATE_TOKEN = "PRIVATE-TOKEN"
-        private const val baseUrl = "https://gitlab.com/api/v4"
+        private const val BASE_URL = "https://gitlab.com/api/v4"
     }
 
     fun fetchMergeRequests(): List<MergeRequest> {
@@ -26,7 +26,7 @@ class GitLabMergeRequestFetcher {
     private fun sendHttpRequest(gitlabToken: String, gitlabGroupId: String): HttpResponse<String> {
         val httpClient = HttpClient.newHttpClient()
         return httpClient.send(
-            HttpRequest.newBuilder(URI("$baseUrl/groups/${gitlabGroupId}/merge_requests?state=opened")).GET()
+            HttpRequest.newBuilder(URI("$BASE_URL/groups/${gitlabGroupId}/merge_requests?state=opened")).GET()
                 .header(PRIVATE_TOKEN, gitlabToken)
                 .build(),
             HttpResponse.BodyHandlers.ofString()
