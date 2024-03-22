@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.7.10"
+    kotlin("jvm") version "1.9.23"
 }
 
 group = "me.chung"
@@ -12,9 +12,9 @@ repositories {
 }
 
 dependencies {
-    implementation("com.slack.api:bolt-jetty:1.25.1")
+    implementation("com.slack.api:bolt-jetty:1.38.3")
     implementation("org.slf4j:slf4j-simple:1.7.36")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.13.4")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.16.2")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.8")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.15.0")
     testImplementation(kotlin("test"))
@@ -25,12 +25,12 @@ tasks.test {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
 }
 
 tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "17"
+    kotlinOptions.jvmTarget = "21"
 }
 
 tasks.jar {
