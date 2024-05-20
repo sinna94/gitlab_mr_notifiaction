@@ -20,8 +20,15 @@ class GitLabMergeRequestFetcher {
         val gitlabGroupId = SystemEnvironmentVariableProvider.getEnvVariable("GITLAB_GROUP_ID")
 
         val response = sendHttpRequest(gitlabToken, gitlabGroupId)
+
+        if (!isSuccessResponse(response)) {
+            throw GitLabMergeRequestFetchException(parseErrorResponse(response))
+        }
+
         return parseResponse(response)
     }
+
+    private fun isSuccessResponse(response: HttpResponse<String>) = response.statusCode().toString().startsWith("2")
 
     private fun sendHttpRequest(gitlabToken: String, gitlabGroupId: String): HttpResponse<String> {
         val httpClient = HttpClient.newHttpClient()
@@ -36,5 +43,10 @@ class GitLabMergeRequestFetcher {
     private fun parseResponse(response: HttpResponse<String>): List<MergeRequest> {
         val objectMapper = ObjectMapperBuilder.build()
         return objectMapper.readValue(response.body(), object : TypeReference<List<MergeRequest>>() {})
+    }
+
+    private fun parseErrorResponse(response: HttpResponse<String>): ErrorResponse {
+        val objectMapper = ObjectMapperBuilder.build()
+        return objectMapper.readValue(response.body(), ErrorResponse::class.java)
     }
 }
